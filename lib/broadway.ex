@@ -607,6 +607,45 @@ defmodule Broadway do
   > Those issues happen regardless of Broadway and solutions to said
   > problems almost always need to be addressed outside of Broadway too.
 
+  ## Configuration Storage
+
+  Broadway stores configuration globally in a chosen storage method.
+  Broadway comes with two configuration storage options:
+
+  - `:persistent_term`, the default.
+  - `:ets`
+
+  ### Persistent Term
+
+  This is the most efficient option for static Broadway pipeline definitions,
+  as this option never deletes the Broadway configuration from storage:
+
+  ```elixir
+  config :broadway, config_storage: :persistent_term
+  ```
+
+  The speed of storing and updating using `:persistent_term` is proportional
+  to the number of already-created terms in the storage. If you are creating
+  several Broadway pipelines dynamically, that may affect the persistent term
+  storage performance. Furthermore, even if you are restarting the same pipeline
+  but you are using different parameters each time, that will require a global
+  GC to update the `:persistent_term` configuration. If you are starting Broadway
+  pipelines dynamically, you must use `:ets`.
+
+  ### ETS
+
+  An ETS-backed configuration storage, useful if Broadway pipelines are
+  started dynamically.
+  To use this configuration storage option, set your application config.exs as so:
+
+  ```elixir
+  config :broadway, config_storage: :ets
+  ```
+
+  Using `:ets` as the config storage will allow for a dynamic number of Broadway server
+  configurations to be stored and fetched without the associated performance tradeoffs
+  that `:persistent_term` has.
+
   ## Telemetry
 
   Broadway currently exposes following Telemetry events:
@@ -793,7 +832,7 @@ defmodule Broadway do
 
   """
 
-  alias Broadway.{BatchInfo, Message, Topology}
+  alias Broadway.{BatchInfo, Message, Topology, ConfigStorage}
   alias NimbleOptions.ValidationError
 
   @typedoc """
@@ -1158,7 +1197,9 @@ defmodule Broadway do
   @doc since: "1.0.0"
   @spec all_running() :: [name()]
   def all_running do
-    for {{Broadway, name}, %Broadway.Topology{}} <- :persistent_term.get(),
+    config_storage = ConfigStorage.get_module()
+
+    for name <- config_storage.list(),
         (try do
            GenServer.whereis(name)
          rescue
