@@ -24,4 +24,11 @@ defmodule Broadway.ConfigStorageTest do
     ETS.delete("some name")
     assert :ets.info(ETS.table(), :size) == 0
   end
+
+  test "no table" do
+    assert [] = ETS.list()
+    assert nil == ETS.get("some name")
+    refute ETS.put("some name", %Broadway.Topology{})
+    refute ETS.delete("some name")
+  end
 end

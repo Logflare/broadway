@@ -19,24 +19,38 @@ defmodule Broadway.ConfigStorage.ETS do
 
   @impl true
   def list do
-    :ets.select(@table, [{{:"$1", :_}, [], [:"$1"]}])
+    if :undefined != :ets.whereis(@table) do
+      :ets.select(@table, [{{:"$1", :_}, [], [:"$1"]}])
+    else
+      []
+    end
   end
 
   @impl true
   def get(server) do
-    case :ets.match(@table, {server, :"$1"}) do
-      [[topology]] -> topology
-      _ -> nil
+    if :undefined != :ets.whereis(@table) do
+      case :ets.match(@table, {server, :"$1"}) do
+        [[topology]] -> topology
+        _ -> nil
+      end
     end
   end
 
   @impl true
   def put(server, topology) do
-    :ets.insert(@table, {server, topology})
+    if :undefined != :ets.whereis(@table) do
+      :ets.insert(@table, {server, topology})
+    else
+      false
+    end
   end
 
   @impl true
   def delete(server) do
-    :ets.delete(@table, server)
+    if :undefined != :ets.whereis(@table) do
+      :ets.delete(@table, server)
+    else
+      false
+    end
   end
 end
